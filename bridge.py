@@ -13,33 +13,34 @@ class stp:
         for i in range(n):
             line=file.readline()
             name=line.split(':')[0]
-            lans=[lan(x,[]) for x in line.split(':')[1].split()]
+            lans=line.split(':')[1]
             mess=message(name,0,name)
             self.BRIDGES.append(bridge(name,lans,mess))
 
     def fillLans(self):
         lannames=[]
         for bridge in self.BRIDGES:
-            for lan in bridge.lans:
-                if lan.name not in lannames:
-                    lannames.append(lan.name)
-                    self.LANS.append(lan)
-        for lan in self.LANS:
+            for lans in bridge.lans:
+                if lans not in lannames:
+                    lannames.append(lans)
+                    self.LANS.append(lan(lans,[]))
+        for lans in self.LANS:
             for bridge in self.BRIDGES:
-                bridgelans=[x.name for x in bridge.lans]
-                if lan.name in bridgelans:
-                    lan.bridges.append(bridge)
+                if lans.name in bridge.lans:
+                    lans.bridges.append(bridge.name)
 
     def initialize(self):
         self.readInput()
         self.fillLans()
-        for bridge in self.BRIDGES:
-            for lan in bridge.lans:
-                for x in lan.bridges:
-                    print(x.name, end=' ')
+        #for bridge in self.BRIDGES:
+            #for lan in bridge.lans:
+                #print(lan.name, end=' ')
+                #lan.display()
+                #for x in lan.bridges:
+                    #print('{}:{}'.format(bridge.name,x.name), end=' ')
                     #if x.name!=bridge.name:
-                    bridge.adj.append(x)
-                print()
+                    #bridge.adj.append(x)
+            #print()
 
 
     def displayMessage(self,time,type,node,message):
@@ -74,11 +75,7 @@ class bridge:
         self.adj=[]
 
     def display(self):
-        lanslist=[]
-        for lans in self.lans:
-            lanslist.append(lans.name)
-        adjlist=[x.name for x in self.adj]
-        print('{}: {}: {}'.format(self.name, lanslist,adjlist))
+        print('{}: {}: {}'.format(self.name, self.lans, self.adj))
         self.message.display()
 
 class lan:
@@ -87,8 +84,7 @@ class lan:
         self.bridges=bridges
 
     def display(self):
-        bridgelist=[x.name for x in self.bridges]
-        print('{}: {}'.format(self.name, bridgelist))
+        print('{}: {}'.format(self.name, self.bridges))
 
 class message:
     def __init__(self,root,distance,sender):
@@ -116,8 +112,8 @@ class message:
 if __name__=='__main__':
     stpobj=stp(r"input\input1.txt")
     stpobj.initialize()
-    for bridge in stpobj.BRIDGES:
-        bridge.display()
+    #for bridge in stpobj.BRIDGES:
+        #bridge.display()
     for lan in stpobj.LANS:
         lan.display()
-    stpobj.sendMessages(0)
+    #stpobj.sendMessages(0)
