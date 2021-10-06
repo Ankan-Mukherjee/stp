@@ -1,171 +1,163 @@
-import copy
-
-class Stp:
-    def __init__(self,filename):
-        self.BRIDGES=[]
-        self.LANS=[]
-        self.B_ADJ=dict()
-        self.L_B_ADJ=dict()
-        self.filename=filename
-
-    def readInput(self):
-        file = open(self.filename,"r")
-        mode=int(file.readline())
-        n=int(file.readline())
-        for i in range(n):
-            line=file.readline()
-            name=line.split(':')[0]
-            lans=[x.rstrip() for x in line.split(':')[1] if x.isalpha()]
-            mess=Message(name,0,name)
-            self.BRIDGES.append(Bridge(name,lans,mess))
-
-    def fillLans(self):
-        lannames=[]
-        for bridge in self.BRIDGES:
-            for lans in bridge.lans:
-                if lans not in lannames:
-                    lannames.append(lans)
-                    self.LANS.append(Lan(lans,[]))
-        for lans in self.LANS:
-            for bridge in self.BRIDGES:
-                if lans.name in bridge.lans:
-                    lans.bridges.append(bridge.name)
-
-    def initialize(self):
-        self.BRIDGES=[]
-        self.LANS=[]
-        self.readInput()
-        self.fillLans()
-        for bridge in self.BRIDGES:
-            for lan in self.LANS:
-                if lan.name in bridge.lans:
-                    for bridge_inner in self.BRIDGES:
-                        if bridge_inner.name in lan.bridges and bridge_inner.name!=bridge.name and bridge_inner.name not in bridge.adj:
-                            bridge.adj.append(bridge_inner.name)
-
-            #print()
-
-
-    def displayMessage(self,time,type,node,message):
-        print('{} {} {}'.format(time,type,node.name),end=' ')
-        message.display()
-
-    def sendMessages(self, time):
-        for bridge in self.BRIDGES:
-            message_temp=copy.deepcopy(bridge.message)
-            message_temp.sender=bridge.name
-            for i in bridge.lans:
-                self.displayMessage(time,'s',bridge,message_temp)
-            for i in bridge.adj:
-                for j in self.BRIDGES:
-                    if j.name==i:
-                        j.received.append(message_temp)
-
-    def receiveMessages(self, time):
-        for bridge in self.BRIDGES:
-            for i in bridge.received:
-                self.displayMessage(time,'r',bridge,i)
-                        #bridge.received.append(bridge_inner.message)
-
-    def updateMessages(self):
-        flag=False
-        for bridge in self.BRIDGES:
-            for received in bridge.received:
-                #received.display()
-                received_copy=copy.deepcopy(received)
-                received_copy.distance+=1
-                message_temp=bridge.message.compare(received_copy)
-                flag=flag or bridge.message.compareBool(message_temp)
-                bridge.message=message_temp
-                #bridge.message.display()
-            #print()
-            bridge.received=[]
-        return flag
-
-    def establishConnection(self):
-        time=0
-        flag=True
-        while True:
-            self.sendMessages(time)
-            self.receiveMessages(time+1)
-            flag=self.updateMessages()
-            if flag == False:
-                break
-            time+=1
-
 class Bridge:
-    def __init__(self,name,lans,message):
+    def __init__(self,name,printTrace):
         self.name=name
-        self.lans=lans
-        self.message=message
-        self.adj=[]
-        self.received=[]
+        self.lans=set()
+        self.root=self
+
+        self.printTrace=printTrace
+
+        self.changed=False
+        self.rp=None
+        self.dp=set()
+        self.distance=0
+        self.trace=list()
+        self.transmits=False
+        self.next=None
+
+    def newConnection(self,lan):
+        self.lans.add(lan)
+        self.dp.add(lan)
+
+    def sendMessage(self, time):
+        if self.root is self or self.transmits:
+            if self.printTrace:
+                self.trace.append(f'{time} s {self.name} ({self.root.name} {self.distance} {self.name})')
+            for lan in self.lans:
+                lan.sendMessage((self.root, self.distance, self), time)
+            self.changed = False
+            self.transmits = False
+
+    def receiveMessage(self, message, lan, time):
+        root, distance, bridge = message
+
+        if self.printTrace:
+            self.trace.append(f'{time+1} r {self.name} ({root.name} {distance} {bridge.name})')
+
+        if self.distance > distance or (self.distance == distance and self.name > bridge.name):
+            if lan in self.dp:
+                self.dp.remove(lan)
+                self.changed = True
+
+        distance += 1
+
+        if root.name > self.root.name or (root.name == self.root.name and distance > self.distance):
+            return
+        if self.next:
+            if root.name == self.root.name and distance == self.distance and bridge.name > self.next.name:
+                return
+
+        self.changed = True
+        self.transmits = True
+        self.root = root
+        self.distance = distance
+        self.rp = lan
+        self.next = bridge
+
+
+    def isActive(self, lan):
+        return self.rp is lan or lan in self.dp
 
     def display(self):
-        print('{}: {}: {}'.format(self.name, self.lans, self.adj))
-        self.message.display()
+        print('{}: {}'.format(self.name, self.lans))
 
 class Lan:
-    def __init__(self,name,bridges):
-        self.name=name
-        self.bridges=bridges
+    def __init__(self, name):
+        self.name = name
+        self.bridges = set()
+
+    def newConnection(self, bridge):
+        self.bridges.add(bridge)
+
+
+    def sendMessage(self, message, t):
+        sender = message[2]
+
+        for bridge in self.bridges:
+            if bridge is not sender:
+                bridge.receiveMessage(message, self, t)
 
     def display(self):
         print('{}: {}'.format(self.name, self.bridges))
 
-class Message:
-    def __init__(self,root,distance,sender):
-        self.root=root
-        self.distance=distance
-        self.sender=sender
-
-    def compare(self, message):
-        if message.root<self.root:
-            return message
-        elif message.distance<self.distance:
-            return message
-        elif message.sender<self.sender:
-            return message
+class STP:
+    def __init__(self,input_filename,output_filename=None):
+        self.BRIDGES={}
+        self.LANS={}
+        self.flag=True
+        self.output=list()
+        self.input_filename=input_filename
+        if output_filename is not None:
+            self.output_filename=output_filename
         else:
-            return self
+            self.output_filename=None
 
-    def compareBool(self, message):
-        if message.root<self.root:
-            return True
-        elif message.distance<self.distance:
-            return True
-        elif message.sender<self.sender:
-            return True
-        else:
-            return False
+    def parseInput(self,inp):
+        inputs = inp.split()
+        return inputs[0][:-1], inputs[1:]
+
+    def initialize(self):
+        file = open(self.input_filename,"r")
+        self.flag=int(file.readline())
+        n = int(file.readline())
+        for i in range(n):
+            bridge, lans = self.parseInput(file.readline())
+            self.BRIDGES[i] = Bridge(bridge, self.flag)
+            for lan in lans:
+                if lan not in self.LANS:
+                    self.LANS[lan] = Lan(lan)
+                self.BRIDGES[i].newConnection(self.LANS[lan])
+                self.LANS[lan].newConnection(self.BRIDGES[i])
+        file.close()
+
+    def generateSpanningTree(self):
+        loop  = True
+        time = 1
+
+        while loop:
+            # send or forward config messages from bridges
+            for i in self.BRIDGES:
+                self.BRIDGES[i].sendMessage(time)
+            time += 1
+
+            # check if some bridge was mutated
+            loop = False
+            for i in self.BRIDGES:
+                if self.BRIDGES[i].changed:
+                    loop = True
+                    break
+
+        # print trace output
+        if self.flag:
+            trace = []
+
+            for i in self.BRIDGES:
+                trace.extend(self.BRIDGES[i].trace)
+                self.BRIDGES[i].trace.clear()
+            self.output.append('\n'.join(sorted(trace)))
 
 
-    def display(self):
-        print('({} {} {})'.format(self.root, self.distance, self.sender))
+        # print required output
+        for i in range(len(self.BRIDGES)):
+            bridge = self.BRIDGES[i]
+            output = []
 
-    def compare(self, message):
-        if message.root<self.root:
-            return message
-        elif message.distance<self.distance:
-            return message
-        elif message.sender<self.sender:
-            return message
-        else:
-            return self
+            for lan in bridge.lans:
+                if bridge.rp is lan:
+                    output.append(f'{lan.name}-RP')
+                elif lan in bridge.dp:
+                    output.append(f'{lan.name}-DP')
+                else:
+                    output.append(f'{lan.name}-NP')
 
-    def display(self):
-        print('({} {} {})'.format(self.root, self.distance, self.sender))
+            self.output.append(f'{bridge.name}: ' + ' '.join(sorted(output)))
 
+    def printOutput(self):
+        for i in self.output:
+            print(i)
 
-
-
-if __name__=='__main__':
-    stpobj=Stp(r"input\input1.txt")
-    stpobj.initialize()
-    for bridge in stpobj.BRIDGES:
-        bridge.display()
-    for lan in stpobj.LANS:
-            lan.display()
-    stpobj.establishConnection()
-    for bridge in stpobj.BRIDGES:
-            bridge.display()
+    def writeOutput(self):
+        if self.output_filename:
+            opfile = open(self.output_filename,"w")
+            for i in self.output:
+                print(i,file=opfile)
+            opfile.close()

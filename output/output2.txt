@@ -1,0 +1,3 @@
+
+B1: A-DP B-DP
+B2: A-NP B-RP

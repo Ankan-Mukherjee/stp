@@ -1,0 +1,40 @@
+0 s B1 (B1 0 B1)
+0 s B2 (B1 1 B2)
+0 s B3 (B1 1 B3)
+0 s B4 (B1 2 B4)
+0 s B5 (B1 2 B5)
+0 s B6 (B1 2 B6)
+0 s B7 (B1 3 B7)
+1 r B1 (B1 1 B2)
+1 r B1 (B1 1 B3)
+1 r B2 (B1 0 B1)
+1 r B2 (B1 2 B4)
+1 r B2 (B1 2 B6)
+1 r B3 (B1 0 B1)
+1 r B3 (B1 2 B4)
+1 r B3 (B1 2 B5)
+1 r B4 (B1 1 B2)
+1 r B4 (B1 1 B3)
+1 r B4 (B1 2 B5)
+1 r B4 (B1 2 B5)
+1 r B4 (B1 2 B6)
+1 r B4 (B1 2 B6)
+1 r B5 (B1 1 B3)
+1 r B5 (B1 2 B4)
+1 r B5 (B1 2 B4)
+1 r B5 (B1 2 B6)
+1 r B5 (B1 3 B7)
+1 r B6 (B1 1 B2)
+1 r B6 (B1 2 B4)
+1 r B6 (B1 2 B4)
+1 r B6 (B1 2 B5)
+1 r B6 (B1 3 B7)
+1 r B7 (B1 2 B5)
+1 r B7 (B1 2 B6)
+B1: A-DP B-DP G-DP
+B2: F-DP G-RP
+B3: B-RP C-DP
+B4: C-NP E-DP F-RP
+B5: C-RP D-DP E-NP
+B6: E-NP F-RP H-DP
+B7: D-RP H-NP
