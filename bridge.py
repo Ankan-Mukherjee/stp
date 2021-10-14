@@ -114,19 +114,16 @@ class STP:
         time = 1
 
         while loop:
-            # send or forward config messages from bridges
             for i in self.BRIDGES:
                 self.BRIDGES[i].sendMessage(time)
             time += 1
 
-            # check if some bridge was mutated
             loop = False
             for i in self.BRIDGES:
                 if self.BRIDGES[i].changed:
                     loop = True
                     break
 
-        # print trace output
         if self.flag:
             trace = []
 
@@ -136,13 +133,14 @@ class STP:
             self.output.append('\n'.join(sorted(trace)))
 
 
-        # print required output
         for i in range(len(self.BRIDGES)):
             bridge = self.BRIDGES[i]
             output = []
 
             for lan in bridge.lans:
-                if bridge.rp is lan:
+                if len(bridge.dp)==0 or (len(bridge.dp)==1 and bridge.rp is lan):
+                    output.append(f'{lan.name}-NP')
+                elif bridge.rp is lan:
                     output.append(f'{lan.name}-RP')
                 elif lan in bridge.dp:
                     output.append(f'{lan.name}-DP')
